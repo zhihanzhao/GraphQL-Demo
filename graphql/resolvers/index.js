@@ -3,20 +3,18 @@ const bcrypt = require("bcryptjs");
 const Event = require("../../models/event");
 const User = require("../../models/user");
 const Booking = require("../../models/booking");
-const user = require("../../models/user");
 
 const fetchEvents = async (eventIds) => {
-    console.log(" ==========fetching Event by Id ==========");
     try {
         const events = await Event.find({_id : {$in : eventIds}});
         //again and again 
         return events.map(event => {
             return {
                 ...event._doc,
-                creator: fetchUser.bind(this, event.creator)
+                creator: fetchUser.bind(this, event.creator),
+                date: new Date(event.date).toISOString()
             };
         });
-        return events;  
     } catch (error) {
         throw error;
     }
@@ -28,13 +26,13 @@ const fetchSingleEvent = async (eventId) => {
         const event = await Event.findById(eventId);
         return {
             ...event._doc,
-            creator: fetchUser.bind(this, event.creator)
+            creator: fetchUser.bind(this, event.creator),
+            date: new Date(event.date).toISOString()
         };      
     } catch (error) {
         throw error;
     }
 }
-
 
 const fetchUser = async (userId) => {
     console.log(" ==========fetching User by Id ==========");
@@ -75,17 +73,30 @@ module.exports = {
             return events.map((event) => {
                 const updatedEvent = {
                     ...event._doc,
-                    creator : fetchUser.bind(this, event.creator)
-                    // creaotr: fetchUser(event.creator)
+                    creator : fetchUser.bind(this, event.creator),
+                    date: new Date(event.date).toISOString()
                 }
-                console.log(updatedEvent);
                 return updatedEvent;
             });     
         } catch (error) {
             throw error
         }
     },
-    bookings: async(args) => {
+    bookings: async() => {
+        try {
+            const bookings = await Booking.find();
+            return bookings.map((booking) => {
+                return {
+                    ...booking._doc,
+                    event: fetchSingleEvent.bind(this, booking.event),
+                    user : fetchUser.bind(this, booking.user),
+                    createdAt: new Date(booking.createdAt).toISOString(),
+                    updatedAt: new Date(booking.updatedAt).toISOString()
+                }
+            })
+        } catch (error) {
+            throw error
+        }
     },
     createEvent: async (args) => {
       try {
@@ -120,7 +131,7 @@ module.exports = {
     },
     createUser: async (args) => {
         try {
-            const userExists = User.findOne({ email: args.userInput.email });
+            const userExists = await User.findOne({ email: args.userInput.email });
             console.log(userExists);
             if(userExists){
                 throw new Error("User exited already.");
@@ -138,20 +149,39 @@ module.exports = {
         }
     },
     bookEvent: async (args) => {
-        const userId = "";
-        const fetchedEvent = await Event.findById({_id: args.eventId});
-        const booking = new Booking({
-            user: userId,
-            event: fetchedEvent
-        });
-        const result = await booking.save();
-        return {
-            ...result._doc,
-            user: fetchUser.bind(this, booking.user),
-            event: fetchSingleEvent.bind(this,booking.event)
+        try {
+            const userId = "6531b6f70e7f6724b7ccb485";
+            const fetchedEvent = await Event.findById({_id: args.eventId});
+            const booking = new Booking({
+                user: userId,
+                event: fetchedEvent
+            });
+            const result = await booking.save();
+            return {
+                ...result._doc,
+                user: fetchUser.bind(this, booking.user),
+                event: fetchSingleEvent.bind(this,booking.event)
+            }   
+        } catch (error) {
+            throw error
         }
     },
-    cancelBooking:(args) => {
-
+    cancelBooking:async (args) => {
+        try {
+            const booking = await Booking.findById({_id: args.bookingId});
+            const event = await Event.findById({_id: booking.event});
+            if(!booking.event){
+                throw new Error("Event not exits");
+            }
+            const result = await Booking.deleteOne({ _id: args.bookingId });
+            console.log(result);
+            return {
+                ...event._doc,
+                creator : fetchUser.bind(this, event.creator),
+                date: new Date(event.date).toISOString()
+            };
+        } catch (error) {
+            throw error;
+        }
     }
   }
