@@ -3,7 +3,7 @@ FrontEnd : React.js \
 BackEnd : (Node.js)Express.js + GraphQL \
 DataBase: MongoDB \
 
-#GraphQL APIs
+# GraphQL APIs
 1. GetAllEvents
 2. GetAllBookings
 3. GetAllUsers
